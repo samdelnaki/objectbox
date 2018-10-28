@@ -1,0 +1,6 @@
+= ObjectBox
+
+WARNING: Pre-alpha stage. This project is not fit for production use. First release anticipated in January 2019.
+
+A utility which handles object history, to support undo and redo featrures etc.
+
