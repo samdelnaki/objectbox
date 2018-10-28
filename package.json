@@ -8,8 +8,15 @@
     "test": "jest"
   },
   "keywords": [],
-  "author": "",
+  "author": "samdelnaki@gmail.com",
   "license": "Apache2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samdelnaki/objectbox"
+  },
+  "bugs": {
+    "url": "https://github.com/samdelnaki/objectbox/issues"
+  },
   "devDependencies": {
     "@types/jest": "^23.3.7",
     "@types/node": "^10.12.0",
