@@ -1,7 +1,7 @@
 {
   "name": "objectbox",
   "version": "0.0.1",
-  "description": "",
+  "description": "PRE-ALPHA. A tool to handle object history, undo and redo features, etc.",
   "main": "./dist/objectbox.js",
   "scripts": {
     "build": "tsc",
