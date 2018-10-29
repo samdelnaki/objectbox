@@ -1,4 +1,4 @@
-import { Observer, Subject } from 'rxjs';
+import { Observer, Subject, Observable } from 'rxjs';
 
 import { Change } from './change';
 
@@ -180,9 +180,29 @@ export class ObjectBox {
   }
 
 
-  /***************************************************
-          O B S E R V A B L E   M E T H O D S
-  ***************************************************/
+  /**************************************
+          O B S E R V A B L E S
+  **************************************/
+
+  updateObserver: Observer<any> = {
+    next: data => {
+      this.update(data);
+      console.log('UPDATED DATA: ' + JSON.stringify(data));
+      console.log(JSON.stringify(this.target));
+    },
+    error: err => {},
+    complete: () => {}
+  }
+
+  observer(): Observer<any> {
+    return this.updateObserver;
+  }
+
+  attachToObservable(observable: Observable<any>) {
+    observable.subscribe(this.updateObserver);
+  }
+
+
 
   modelSubject: Subject<any> = new Subject();
   changeSubject: Subject<Change[]> = new Subject();
