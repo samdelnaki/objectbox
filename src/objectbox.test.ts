@@ -59,6 +59,26 @@ test('existsFutureState() true when future changes exist.', () => {
 });
 
 
+test('Changes are propagated to a subscriber', () => {
+  ob.subscribeToChanges(obs1);
+  let changes = ob.update( {a: 'A_NEW' } );
+  expect(datum1).toBe(changes);
+});
+test('Changes are propagated to more than one subscriber', () => {
+  ob.subscribeToChanges(obs1);
+  ob.subscribeToChanges(obs2);
+  let changes = ob.update( {a: 'A_NEW' } );
+  expect(datum1).toBe(changes);
+  expect(datum2).toBe(changes);
+});
+test('Changes are propagated on undo/goBack() and redo/goForward().', () => {
+  ob.subscribeToChanges(obs1);
+  ob.update( {a: 'A_NEW' } );
+  let ch = ob.goBack();
+  expect(datum1).toBe(ch);
+  ch = ob.goForward();
+  expect(datum1).toBe(ch);
+});
 test('Model modifications are propagated to a subscriber', () => {
   ob.subscribeToModelUpdates(obs1);
   ob.update( {a: 'A_NEW' } );
@@ -79,25 +99,17 @@ test('Model modifications are propagated on undo/goBack() and redo/goForward().'
   ch = ob.goForward();
   expect(datum1.a).toBe('A_NEW');
 });
-test('Changes are propagated to a subscriber', () => {
-  ob.subscribeToChangeList(obs1);
-  let changes = ob.update( {a: 'A_NEW' } );
-  expect(datum1).toBe(changes);
-});
-test('Changes are propagated to more than one subscriber', () => {
-  ob.subscribeToChangeList(obs1);
-  ob.subscribeToChangeList(obs2);
-  let changes = ob.update( {a: 'A_NEW' } );
-  expect(datum1).toBe(changes);
-  expect(datum2).toBe(changes);
-});
-test('Changes are propagated on undo/goBack() and redo/goForward().', () => {
-  ob.subscribeToChangeList(obs1);
-  ob.update( {a: 'A_NEW' } );
-  let ch = ob.goBack();
-  expect(datum1).toBe(ch);
-  ch = ob.goForward();
-  expect(datum1).toBe(ch);
+test('Patch objects are propagated to a subscriber', () => {
+  ob.subscribeToPatches(obs1);
+  let update = {
+    a: 'A_NEW',
+    b: {
+      b1: 'B1',
+      b2: 'B2'
+    }
+  };
+  ob.update(update);
+  expect(datum1).toEqual(update);
 });
 
 
