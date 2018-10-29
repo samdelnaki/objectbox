@@ -180,9 +180,9 @@ export class ObjectBox {
   }
 
 
-  /**************************************
-          O B S E R V A B L E S
-  **************************************/
+  // **************************************
+  //        O B S E R V A B L E S
+  // **************************************
 
   updateObserver: Observer<any> = {
     next: data => {
@@ -206,23 +206,28 @@ export class ObjectBox {
 
   modelSubject: Subject<any> = new Subject();
   changeSubject: Subject<Change[]> = new Subject();
+  patchSubject: Subject<any> = new Subject();
 
   subscribeToModelUpdates(subscriber: Observer<any>) {
     this.modelSubject.subscribe(subscriber);
   }
-  subscribeToChangeList(subscriber: Observer<Change[]>) {
+  subscribeToChanges(subscriber: Observer<Change[]>) {
     this.changeSubject.subscribe(subscriber);
   }
+  subscribeToPatches(subscriber: Observer<Change[]>) {
+    this.patchSubject.subscribe(subscriber);
+  }
 
-  private propagateChanges(changes: Change[]) {
+  private propagateChanges(changes: Change[], patch: any) {
     this.modelSubject.next(this.cloneTargetData());
     this.changeSubject.next(changes);
+    this.patchSubject.next(patch);
   }
 
 
-  /***************************************************
-          T A R G E T   M A N A G E M E N T
-  ***************************************************/
+  // ***************************************************
+  //        T A R G E T   M A N A G E M E N T
+  // ***************************************************
 
 
   /**
@@ -231,6 +236,7 @@ export class ObjectBox {
    * @param changes The list of changes to be executed.
    */
   private updateTarget(changes: Change[]) {
+    let patch: any  = {};
     for(let change of changes) {
       if(change.pointer!==null) {
         let path : string[] = change.pointer.split('.');
@@ -238,10 +244,11 @@ export class ObjectBox {
         if(path[0]==='') {
           path.shift();
         }
+        this.setAttribute(patch, path, change.updated);
         this.setAttribute(this.target, path, change.updated);
       }
     }
-    this.propagateChanges(changes);
+    this.propagateChanges(changes, patch);
   }
 
   /**
@@ -251,6 +258,7 @@ export class ObjectBox {
    * @param changes The list of changes to be executed.
    */
   private updateTargetReverse(changes: Change[]) {
+    let patch: any  = {};
     for(let change of changes) {
       if(change.pointer!==null) {
         let path : string[] = change.pointer.split('.');
@@ -258,24 +266,28 @@ export class ObjectBox {
         if(path[0]==='') {
           path.shift();
         }
+        this.setAttribute(patch, path, change.previous);
         this.setAttribute(this.target, path, change.previous);
       }
     }
-    this.propagateChanges(changes);
+    this.propagateChanges(changes, patch);
   }
 
   /**
-   * Locates the attribute indicated by the path parameter and updates to the
-   * new value.
+   * Locates the attribute indicated by the path parameter and updates it to the
+   * new value, creating it if necessary.
    * 
    * @param obj The target object 
    * @param path A string array representing the route to descend through the object graph.
    * @param value The new value.
    */
   private setAttribute(obj: any, path: string[], value: any) {
+    path = Array.from(path);
     let attributeName = path.shift();
     if(path.length>0) {
-      if(obj[attributeName]===undefined) {
+      // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+      // we need to instantiate it as an object.
+      if(obj[attributeName]===undefined || this.isRawType(obj[attributeName])) {
         obj[attributeName]={};
       }
       this.setAttribute(obj[attributeName], path, value);
@@ -302,7 +314,7 @@ export class ObjectBox {
    * @param pointer A text value which represents the current position in the object graph. Default is empty string, which is the object root.
    * @param changes The Array of Change objects which will be returned. Default is a new empty array.
    */
-  private scanForDifferences(updated: any, original: any, pointer: string = '', changes: Change[] = []): Change[] {
+  private scanForDifferences(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
     // If the update object is null we just check to see if the original was not null and add this change. This case effectively deletes the original object.
     if(updated===null) {
       if(original!==null) {
@@ -337,6 +349,16 @@ export class ObjectBox {
       }
     }
     return changes;
+  }
+
+
+
+  // **************************************
+  //           U T I L I T I E S
+  // **************************************
+
+  isRawType(element: any) {
+    return (typeof element == 'string' || typeof element === 'number' || typeof element === 'boolean')
   }
 
 }
