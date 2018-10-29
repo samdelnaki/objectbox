@@ -214,7 +214,7 @@ export class ObjectBox {
   subscribeToChanges(subscriber: Observer<Change[]>) {
     this.changeSubject.subscribe(subscriber);
   }
-  subscribeToPatches(subscriber: Observer<Change[]>) {
+  subscribeToPatches(subscriber: Observer<any>) {
     this.patchSubject.subscribe(subscriber);
   }
 
@@ -295,8 +295,6 @@ export class ObjectBox {
       obj[attributeName] = value;
     }
   }
-
-
 
 
 
