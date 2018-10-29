@@ -2,21 +2,22 @@
 
 == To do:
 
-- Init Git
+- [x] Init Git
 
-- Add FormObserver, which uses patchValue() to update form view.
+- [ ] Add a patch observable
+- [ ] Add FormObserver, which uses patchValue() to update form view.
 
-- Remove jest files from dist
+- [ ] Remove jest files from dist
 
-- Add ctrl+z and ctrl+shift+z keyboard listeners.
-  - Implement destroy() method and remove keyboard listeners.
+- [ ] Add ctrl+z and ctrl+shift+z keyboard listeners.
+  - [ ] Implement destroy() method and remove keyboard listeners.
 
-- Implement array handling features.
-  - Block inequality detection / replacement: replace entire array when change is detected.
-  - Insert 1 element
-  - Delete 1 element
-  - Modify 1 element
-  - Add metadata with unique objectbox_id, and update CUD methods to support this.
+- [ ] Implement array handling features.
+  - [ ] Block inequality detection / replacement: replace entire array when change is detected.
+  - [ ] Insert 1 element
+  - [ ] Delete 1 element
+  - [ ] Modify 1 element
+  - [ ] Add metadata with unique objectbox_id, and update CUD methods to support this.
 
 
 == Possible features
