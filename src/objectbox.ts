@@ -1,4 +1,4 @@
-import { Observer, Subject, Observable } from 'rxjs';
+import { Observable, Observer, OperatorFunction, Subject, asyncScheduler, empty } from 'rxjs';
 
 import { Change } from './change';
 
@@ -6,12 +6,115 @@ import { Change } from './change';
  * 
  */
 export class ObjectBox {
+
   private maxHistoryLength: number = 0; // 0 if history is unlimited, or any positive value if limited.
+  private debounceLength: 500;
 
   private target: any = null;
 
   private historyQueue: Change[][] = [];
   private historyPointer: number = null;
+
+  attachDebounceFieldSource(observable: Observable<any>) {
+    observable.pipe(this.debounceFieldOp(this)).subscribe(this.debounceFieldObserver)
+  }
+
+  counter: number = 0;
+  private debounceFieldObserver: Observer<any> = {
+    next: data => {
+      this.counter++;
+      console.log('debounceFieldObserver next()' + this.counter);
+    },
+    error: err => {
+      console.log('debounceFieldObserver error()');},
+    complete: () => {
+      console.log('debounceFieldObserver complete() ' + this.counter);}
+  };
+
+  debounceFieldOp = (objectBox: ObjectBox) => <T>(source: Observable<T>) =>
+    new Observable<T>(observer => {
+      let objBox: ObjectBox = objectBox;
+      let activeDebounceChange: Change = null;
+      return source.subscribe({
+        next(obj) {
+          // First, we analyse the object tree to see what nodes have changed, if any.
+          let changes: Change[] = objBox.scanForDifferences(obj, objBox.target);
+          // If there is more than one change, we execute next() immediately.
+          if(changes.length>1) {
+            observer.next(obj);
+          } 
+          // Else if there is only one change (and at least one change), we debounce it.
+          else if(changes.length===1) {
+            let change: Change = changes[0];
+            if(activeDebounceChange.pointer !== change.pointer) {
+              observer.next(obj);
+            }
+            asyncScheduler.schedule( (debounceChange: Change)=>{
+              if(activeDebounceChange===debounceChange) {
+                observer.next(obj);
+              }
+            }, objBox.debounceLength);
+          }
+        },
+        error(err) { observer.error(err); },
+        complete() { observer.complete(); }
+      })
+    });
+
+  /*private debounceFieldObs: Observer<any> = null;
+  private debounceField(obj: any) {
+    let debounceRequired: boolean = this.updateWithDebounceField(obj);
+    if(debounceRequired) {
+      let subscription = asyncScheduler.schedule( (datum)=>{
+        this.debounceFieldObs.next(datum);
+      }, this.debounceLength);
+    }
+  };*/
+
+  /*private debounceField(obj: any): Observable<any> {
+    let debounceRequired: boolean = this.updateWithDebounceField(obj);
+    if(debounceRequired) {
+      let subscription = asyncScheduler.schedule( (change)=>{
+        // If the activeDebounceChange is equivalent to the change object in this function, we
+        // know that it hasn't been reset and hence we should commit the change and reset
+        // activeDebounceChange to null. 
+        if(this.activeDebounceChange===change) {
+          this.executeUpdate([this.activeDebounceChange]);
+          this.activeDebounceChange=null;
+        }
+      }, this.debounceLength);
+      return Observable.create(subscription);
+    } else {
+      return empty();
+    }
+  };*/
+
+  private activeDebounceChange: Change = null;
+
+  private updateWithDebounceField(obj: any): Change {
+    // First, we analyse the object tree to see what nodes have changed, if any.
+    let changes: Change[] = this.scanForDifferences(obj, this.target);
+    // If there is more than one change, we commit them immediately.
+    if(changes.length>1) {
+      this.executeUpdate(changes);
+    }
+    // Else if there is only one change, we debounce it.
+    else if(changes.length===1) {
+      return changes[0];
+      //let change: Change = changes[0];
+      // If there's an active debounce change, we check to see if it affects the same node in the object
+      // graph. If not we commit it and set the current change to be the active debouce change; If they
+      // match, we reset activeDebounceChange to the current change and will restart the debounce timer.
+      /*if(this.activeDebounceChange!==null) {
+        if(this.activeDebounceChange.pointer !== change.pointer) {
+          this.executeUpdate([this.activeDebounceChange]);
+        }
+        this.activeDebounceChange=change;
+        return change;
+      }*/
+    }
+    return null;
+  }
 
   // TODO: Should throw an error if target is reset after being initialised????
   /**
@@ -19,6 +122,7 @@ export class ObjectBox {
    * @param target 
    */
   setTarget(target: any): ObjectBox {
+    asyncScheduler.schedule( ()=>{console.log('test')}, 2000);
     this.target = target;
     return this;
   }
@@ -63,12 +167,16 @@ export class ObjectBox {
     let changes: Change[] = this.scanForDifferences(obj, this.target);
     // If changes were found, we commit them.
     if(changes.length>0) {
+      this.executeUpdate(changes);
+    }
+    return changes;
+  }
+
+  private executeUpdate(changes: Change[]) {
       // Commit the changes to the history chain:
       this.addToHistory(changes);
       // Update the target model to reflect changes:
       this.updateTarget(changes);
-    }
-    return changes;
   }
 
 

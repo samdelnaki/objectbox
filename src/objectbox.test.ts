@@ -1,6 +1,9 @@
 import { ObjectBox } from './objectbox';
+import { Observable, Observer, of} from 'rxjs';
 
 let ob: ObjectBox;
+
+let testObservable: Observable<any> = of(1,2,3,4,5,6);
 
 let datum1: any = null;
 let datum2: any = null;
@@ -22,7 +25,10 @@ beforeEach(() => {
   ob.setTarget({a: 'A', b: 'B'});
   ob.update({a: 'AAA'});
 });
+test('debounceField filter functions correctly.', ()=> {
+  ob.attachDebounceFieldSource(testObservable);
 
+})
 test('Change is propagated to correct node of the target.', ()=> {
   expect(ob.cloneTargetData().a).toBe('AAA');
 })
