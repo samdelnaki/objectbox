@@ -15,6 +15,8 @@ export class ObjectBox {
   private historyQueue: Change[][] = [];
   private historyPointer: number = null;
 
+  private arrayHandling: 'smart' | 'brute' | 'integrated' = 'brute';
+
   attachDebounceFieldSource(observable: Observable<any>) {
     observable.pipe(this.debounceFieldOp(this)).subscribe(this.debounceFieldObserver)
   }
@@ -441,7 +443,14 @@ export class ObjectBox {
     }
     // Since there is currently no capacity to handle arrays, we just log this error and continue.
     else if(updated instanceof Array) {
-      console.log('Cant yet handle arrays, sorry');
+      switch(this.arrayHandling) {
+        case 'brute':
+          this.scanArrayBruteMethod(updated, original, pointer, changes, patch);
+          break;
+        case 'smart':
+        case 'integrated':
+          break;
+      }
     }
     // If we have arrived here, we must be dealing with an object element. Hence, we traverse its object tree by
     // recursively calling this method.
@@ -457,6 +466,36 @@ export class ObjectBox {
     return changes;
   }
 
+  scanArrayBruteMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
+    if(updated.length !== original.length) {
+      changes.push(new Change(pointer, original, updated));
+    } else {
+      let nodeChanges: Change[] = [];
+      for(let i=0;i<original.length;i++) {
+        this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
+        if(nodeChanges.length>0) {
+          changes.push(new Change(pointer, original, updated));
+        }
+      }
+    }
+    return changes;
+  }
+
+  scanArraySmartMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
+    let lengthDiff = original.length - updated.length;
+    if(Math.abs(lengthDiff)>1) {
+      changes.push(new Change(pointer, original, updated));
+    } else {
+      let nodeChanges: Change[] = [];
+      for(let i=0;i<original.length;i++) {
+        this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
+        if(nodeChanges.length>0) {
+          changes.concat(nodeChanges);
+        }
+      }
+    }
+    return changes;
+  }
 
 
   // **************************************

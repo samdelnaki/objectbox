@@ -137,3 +137,16 @@ test('Patch object is created correctly.', () => {
   let result = ob.createPatchObject(mod, original);
   expect(result).toEqual(mod);
 });
+
+test('Brute array change detection correctly handles array change.', () => {
+  ob.update({
+    ar: [
+      'one','two','three'
+    ]
+  });
+  ob.update({ar: [
+    'one','two','three','four'
+  ]
+  })
+  expect(ob.goBack()[0].pointer).toEqual('.ar');
+});
