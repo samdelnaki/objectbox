@@ -13,6 +13,7 @@
   - [ ] Implement destroy() method and remove keyboard listeners.
 
 - [ ] Implement array handling features.
+  - [ ] Use xxHash for object identification?
   - [ ] Block inequality detection / replacement: replace entire array when change is detected.
   - [ ] Insert 1 element
   - [ ] Delete 1 element
