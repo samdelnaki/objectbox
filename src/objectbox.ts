@@ -124,13 +124,12 @@ export class ObjectBox {
    * @param target 
    */
   setTarget(target: any): ObjectBox {
-    asyncScheduler.schedule( ()=>{console.log('test')}, 2000);
-    this.target = target;
+    this.target = this.clone(target);
     return this;
   }
 
   cloneTargetData() {
-    return JSON.parse( JSON.stringify(this.target) );
+    return this.clone(this.target);
   }
 
   createPatchObject(updated: any, original: any = this.target): any {
@@ -354,6 +353,9 @@ export class ObjectBox {
         if(path[0]==='') {
           path.shift();
         }
+        if(!this.isRawType(change.updated)) {
+          change.updated = this.clone(change.updated);
+        }
         this.setAttribute(patch, path, change.updated);
         this.setAttribute(this.target, path, change.updated);
       }
@@ -502,7 +504,11 @@ export class ObjectBox {
   //           U T I L I T I E S
   // **************************************
 
-  isRawType(element: any) {
+  private clone(obj: any) : any {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  private isRawType(element: any) {
     return (typeof element == 'string' || typeof element === 'number' || typeof element === 'boolean')
   }
 
