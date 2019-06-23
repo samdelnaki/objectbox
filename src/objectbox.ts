@@ -485,17 +485,22 @@ export class ObjectBox {
 
   scanArraySmartMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
     let lengthDiff = original.length - updated.length;
-    if(Math.abs(lengthDiff)>1) {
+    /*switch(lengthDiff) {
+      case 0:
+        break:
+      case 
+    }*/
+    /*if(Math.abs(lengthDiff)>1) {
       changes.push(new Change(pointer, original, updated));
-    } else {
-      let nodeChanges: Change[] = [];
-      for(let i=0;i<original.length;i++) {
-        this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
-        if(nodeChanges.length>0) {
-          changes.concat(nodeChanges);
-        }
-      }
+    } else {*/
+    let nodeChanges: Change[] = [];
+    for(let i=0;i<original.length;i++) {
+      this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
     }
+    if(nodeChanges.length>0) {
+      changes.concat(nodeChanges);
+    }
+    /*}*/
     return changes;
   }
 
