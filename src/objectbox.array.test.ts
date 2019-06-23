@@ -22,7 +22,7 @@ test('Array node is updated correctly.', () => {
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array2);
 });
-test('Brute array change detection correctly array replcement.', () => {
+test('Brute array handling detects array replcement.', () => {
   let array2 = [
     'one','two','three','four'
   ];
@@ -35,7 +35,7 @@ test('Brute array change detection correctly array replcement.', () => {
   expect(chs[0].previous).toEqual(array1);
   expect(chs[0].updated).toEqual(array2);
 });
-test('Brute array change detection correctly array expansion.', () => {
+test('Brute array handling detects array expansion.', () => {
   array1.push('four');
   obox.update({
     ar: array1
@@ -48,8 +48,22 @@ test('Brute array change detection correctly array expansion.', () => {
     'one','two','three'
   ])
 });
-test('Brute array change detection correctly array reduction.', () => {
+test('Brute array handling detects array reduction.', () => {
   array1.pop();
+  obox.update({
+    ar: array1
+  })
+  let chs: Change[] = obox.goBack();
+  expect(chs.length===1);
+  expect(chs[0].pointer).toEqual('.ar');
+  expect(chs[0].updated).toEqual(array1);
+  expect(chs[0].previous).toEqual([
+    'one','two','three'
+  ])
+});
+
+test('Brute array handling detects element modification.', () => {
+  array1[1] = 'nothing';
   obox.update({
     ar: array1
   })
