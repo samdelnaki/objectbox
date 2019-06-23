@@ -17,6 +17,8 @@ export class ObjectBox {
 
   private arrayHandling: 'smart' | 'brute' | 'integrated' = 'brute';
 
+  private isArrayIndex : RegExp = new RegExp('\w+\[\d+\]').compile();
+
   constructor(target: any = null, options: any = null) {
     if(target!==null) {
       this.setTarget(target);
@@ -413,17 +415,38 @@ export class ObjectBox {
    * @param value The new value.
    */
   private setAttribute(obj: any, path: string[], value: any) {
+    //TODO: Remove this line?
     path = Array.from(path);
     let attributeName = path.shift();
+
+    let arrayMatch = /(\w+)\[(\d+)\]/gi.exec(attributeName);
+    let arrayIndex;
+    if(arrayMatch!==null) {
+      attributeName = arrayMatch[1];
+      arrayIndex = arrayMatch[2];
+    }
     if(path.length>0) {
-      // If the attribute is newly created, or was previously a raw type (string, number or boolean),
-      // we need to instantiate it as an object.
-      if(obj[attributeName]===undefined || this.isRawType(obj[attributeName])) {
-        obj[attributeName]={};
+      if(!arrayIndex) {
+        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+        // we need to instantiate it as an object.
+        if(obj[attributeName]===undefined || this.isRawType(obj[attributeName])) {
+          obj[attributeName]={};
+        }
+        this.setAttribute(obj[attributeName], path, value);
+      } else {
+        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+        // we need to instantiate it as an object.
+        if(obj[attributeName][arrayIndex]===undefined || this.isRawType(obj[attributeName][arrayIndex])) {
+          obj[attributeName][arrayIndex]={};
+        }
+        this.setAttribute(obj[attributeName][arrayIndex], path, value);
       }
-      this.setAttribute(obj[attributeName], path, value);
     } else {
-      obj[attributeName] = value;
+      if(!arrayIndex) {
+        obj[attributeName] = value;
+      } else {
+        obj[attributeName][arrayIndex] = value;
+      }
     }
   }
 
@@ -533,7 +556,7 @@ export class ObjectBox {
             // If we arrive here we know that elements have been inserted from 
             // i (inclusive) to j (exclusive).
             insertCount += c = j-i;
-            let change: Change = new Change(`${pointer}[${i}]`,undefined,updated.splice(i,0,))
+            let change: Change = new Change(`${pointer}[${i}]`,undefined,updated.slice(i,j))
             nodeChanges.push(change);
             break;
           }
