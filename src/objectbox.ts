@@ -40,9 +40,10 @@ export class ObjectBox {
       return source.subscribe({
         next(obj) {
           // First, we analyse the object tree to see what nodes have changed, if any.
-          let changes: Change[] = objBox.scanForDifferences(obj, objBox.target);
+          let changes: Change[];
+          let hasChanged  = objBox.scanForDifferences(obj, objBox.target, changes);
           // If there is more than one change, we execute next() immediately.
-          if(changes.length>1) {
+          if(hasChanged) {
             observer.next(obj);
           } 
           // Else if there is only one change (and at least one change), we debounce it.
@@ -95,25 +96,28 @@ export class ObjectBox {
 
   private updateWithDebounceField(obj: any): Change {
     // First, we analyse the object tree to see what nodes have changed, if any.
-    let changes: Change[] = this.scanForDifferences(obj, this.target);
+    let changes: Change[] = [];
+    let hasChanged = this.scanForDifferences(obj, this.target, changes);
     // If there is more than one change, we commit them immediately.
-    if(changes.length>1) {
-      this.executeUpdate(changes);
-    }
-    // Else if there is only one change, we debounce it.
-    else if(changes.length===1) {
-      return changes[0];
-      //let change: Change = changes[0];
-      // If there's an active debounce change, we check to see if it affects the same node in the object
-      // graph. If not we commit it and set the current change to be the active debouce change; If they
-      // match, we reset activeDebounceChange to the current change and will restart the debounce timer.
-      /*if(this.activeDebounceChange!==null) {
-        if(this.activeDebounceChange.pointer !== change.pointer) {
-          this.executeUpdate([this.activeDebounceChange]);
-        }
-        this.activeDebounceChange=change;
-        return change;
-      }*/
+    if(hasChanged) {
+      if(changes.length>1) {
+        this.executeUpdate(changes);
+      }
+      // Else if there is only one change, we debounce it.
+      else if(changes.length===1) {
+        return changes[0];
+        //let change: Change = changes[0];
+        // If there's an active debounce change, we check to see if it affects the same node in the object
+        // graph. If not we commit it and set the current change to be the active debouce change; If they
+        // match, we reset activeDebounceChange to the current change and will restart the debounce timer.
+        /*if(this.activeDebounceChange!==null) {
+          if(this.activeDebounceChange.pointer !== change.pointer) {
+            this.executeUpdate([this.activeDebounceChange]);
+          }
+          this.activeDebounceChange=change;
+          return change;
+        }*/
+      }
     }
     return null;
   }
@@ -133,16 +137,20 @@ export class ObjectBox {
   }
 
   createPatchObject(updated: any, original: any = this.target): any {
-    let changes: Change[] = this.scanForDifferences(updated, original);
+    
+    let changes: Change[] = [];
+    let hasChanged = this.scanForDifferences(updated, original, changes);
     let patch: any = {};
-    for(let change of changes) {
-      if(change.pointer!==null) {
-        let path : string[] = change.pointer.split('.');
-        // If the pointer begins with a '.', we can ignore the first part of the path.
-        if(path[0]==='') {
-          path.shift();
+    if(hasChanged) {
+      for(let change of changes) {
+        if(change.pointer!==null) {
+          let path : string[] = change.pointer.split('.');
+          // If the pointer begins with a '.', we can ignore the first part of the path.
+          if(path[0]==='') {
+            path.shift();
+          }
+          this.setAttribute(patch, path, change.updated);
         }
-        this.setAttribute(patch, path, change.updated);
       }
     }
     return patch;
@@ -165,9 +173,10 @@ export class ObjectBox {
    */
   update(obj: any): Change[] {
     // First, we analyse the object tree to see what nodes have changed, if any.
-    let changes: Change[] = this.scanForDifferences(obj, this.target);
+    let changes: Change[] = [];
+    let hasChanged = this.scanForDifferences(obj, this.target, changes);
     // If changes were found, we commit them.
-    if(changes.length>0) {
+    if(hasChanged) {
       this.executeUpdate(changes);
     }
     return changes;
@@ -424,7 +433,7 @@ export class ObjectBox {
    * @param pointer A text value which represents the current position in the object graph. Default is empty string, which is the object root.
    * @param changes The Array of Change objects which will be returned. Default is a new empty array.
    */
-  private scanForDifferences(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
+  private scanForDifferences(updated: any, original: any, changes: Change[], pointer: string = '', patch: any = {}): boolean {
     // If the update object is null we just check to see if the original was not null and add this change. This case effectively deletes the original object.
     if(updated===null) {
       if(original!==null) {
@@ -461,11 +470,11 @@ export class ObjectBox {
         if(original[property]===undefined) {
           changes.push(new Change(pointer+'.'+property, original[property], updated[property]));
         } else {
-          this.scanForDifferences(updated[property], original[property], pointer+'.'+property, changes);
+          this.scanForDifferences(updated[property], original[property], changes, pointer+'.'+property);
         }
       }
     }
-    return changes;
+    return changes.length>0;
   }
 
   scanArrayBruteMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
@@ -474,7 +483,7 @@ export class ObjectBox {
     } else {
       let nodeChanges: Change[] = [];
       for(let i=0;i<original.length;i++) {
-        this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
+        this.scanForDifferences(updated[i], original[i], nodeChanges, pointer+`[${i}]`, patch);
         if(nodeChanges.length>0) {
           changes.push(new Change(pointer, original, updated));
         }
@@ -495,7 +504,7 @@ export class ObjectBox {
     } else {*/
     let nodeChanges: Change[] = [];
     for(let i=0;i<original.length;i++) {
-      this.scanForDifferences(updated[i], original[i], pointer+`[${i}]`, nodeChanges, patch);
+      this.scanForDifferences(updated[i], original[i], nodeChanges, pointer+`[${i}]`, patch);
     }
     if(nodeChanges.length>0) {
       changes.concat(nodeChanges);
