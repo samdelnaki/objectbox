@@ -8,3 +8,7 @@ export class Change {
     this.updated = updated;
   }
 };
+
+export class ArrayChange extends Change {
+  type: 'insert'|'modify'|'delete';
+}
