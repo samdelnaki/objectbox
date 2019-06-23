@@ -8,13 +8,18 @@ beforeEach(() => {
   array1  = [
     'one','two','three'
   ];
-  obox = new ObjectBox();
-  obox.setTarget({ar: array1});
+  obox = new ObjectBox(
+    {
+      ar: array1
+    },
+    {
+      arrayHandling: 'smart'
+    });
 });
 
-test('Array node is updated correctly.', () => {
+test('Smart array handling detects element modification.', () => {
   let array2 = [
-    'one','two','three','four'
+    'one','different','three'
   ];
   obox.update({
     ar: array2

@@ -17,6 +17,17 @@ export class ObjectBox {
 
   private arrayHandling: 'smart' | 'brute' | 'integrated' = 'brute';
 
+  constructor(target: any = null, options: any = null) {
+    if(target!==null) {
+      this.setTarget(target);
+    }
+    if(options!==null) {
+      if(options.arrayHandling) {
+        this.arrayHandling = options.arrayHandling;
+      }
+    }
+  }
+
   attachDebounceFieldSource(observable: Observable<any>) {
     observable.pipe(this.debounceFieldOp(this)).subscribe(this.debounceFieldObserver)
   }
@@ -137,7 +148,6 @@ export class ObjectBox {
   }
 
   createPatchObject(updated: any, original: any = this.target): any {
-    
     let changes: Change[] = [];
     let hasChanged = this.scanForDifferences(updated, original, changes);
     let patch: any = {};
@@ -456,9 +466,10 @@ export class ObjectBox {
     else if(updated instanceof Array) {
       switch(this.arrayHandling) {
         case 'brute':
-          this.scanArrayBruteMethod(updated, original, pointer, changes, patch);
+          this.scanArrayBruteMethod(updated, original, changes, pointer, patch);
           break;
         case 'smart':
+          this.scanArraySmartMethod(updated, original, changes, pointer, patch)
         case 'integrated':
           break;
       }
@@ -477,40 +488,85 @@ export class ObjectBox {
     return changes.length>0;
   }
 
-  scanArrayBruteMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
+  private scanArrayBruteMethod(updated: any, original: any, changes: Change[], pointer: string = '', patch: any = {}): boolean {
     if(updated.length !== original.length) {
       changes.push(new Change(pointer, original, updated));
+      return true;
     } else {
       let nodeChanges: Change[] = [];
       for(let i=0;i<original.length;i++) {
         this.scanForDifferences(updated[i], original[i], nodeChanges, pointer+`[${i}]`, patch);
         if(nodeChanges.length>0) {
           changes.push(new Change(pointer, original, updated));
+          return true;
         }
       }
     }
-    return changes;
+    return false;
   }
 
-  scanArraySmartMethod(updated: any, original: any, pointer: string = '', changes: Change[] = [], patch: any = {}): Change[] {
-    let lengthDiff = original.length - updated.length;
-    /*switch(lengthDiff) {
-      case 0:
-        break:
-      case 
-    }*/
-    /*if(Math.abs(lengthDiff)>1) {
-      changes.push(new Change(pointer, original, updated));
-    } else {*/
+  private scanArraySmartMethod(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
+    let lengthDiff = updated.length - original.length;
+
+    if(lengthDiff>0) {
+      return this.scanArrayForInserts(updated, original, changes, pointer);
+    } else if( lengthDiff<0) {
+      return this.scanArrayForDeletions(updated, original, changes, pointer);
+    } else {
+      return this.scanArrayForModifications(updated, original, changes, pointer);
+    }
+
+  }
+
+  private scanArrayForInserts(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
+    let nodeChanges: Change[] = [];
+    let insertCount = 0;
+
+    for(let i=0;i<original.length;i++) {
+      let hasChanged = this.scanForDifferences(updated[i+insertCount], original[i], nodeChanges);
+      if(hasChanged) {
+        let c: number = -1;
+        let j;
+        // Loop through elements to find how many were inserted.
+        for(j=i;j<updated.length;j++) {
+          if(!this.scanForDifferences(updated[j+insertCount],original[i],[])) {
+            // If we arrive here we know that elements have been inserted from 
+            // i (inclusive) to j (exclusive).
+            insertCount += c = j-i;
+            let change: Change = new Change(`${pointer}[${i}]`,undefined,updated.splice(i,0,))
+            nodeChanges.push(change);
+            break;
+          }
+        }
+        // If insertCount was never set, it must mean that elements were 
+        // inserted up until the end of the array.
+        if(c===-1) {
+          insertCount += c = updated.length-i;
+        }
+        // Lastly, we now want to jump over all the inserted elements, so we
+        // update i to do this (we also skip updated[j], because we already
+        // know, by definition, that it does not need to be analysed).
+        i=j+1;
+      }
+    }
+    
+    changes.concat(nodeChanges);
+    return changes.length>0;
+  }
+
+
+  private scanArrayForDeletions(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
+    return false;
+  }
+
+  private scanArrayForModifications(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
     let nodeChanges: Change[] = [];
     for(let i=0;i<original.length;i++) {
-      this.scanForDifferences(updated[i], original[i], nodeChanges, pointer+`[${i}]`, patch);
+      this.scanForDifferences(updated[i],original[i],nodeChanges,`${pointer}[${i}]`,patch);
     }
-    if(nodeChanges.length>0) {
-      changes.concat(nodeChanges);
-    }
-    /*}*/
-    return changes;
+    
+    changes.concat(nodeChanges);
+    return changes.length>0;
   }
 
 
