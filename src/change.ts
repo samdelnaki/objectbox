@@ -10,5 +10,9 @@ export class Change {
 };
 
 export class ArrayChange extends Change {
-  type: 'insert'|'modify'|'delete';
+  type: 'insert'|'set'|'delete';
+  constructor(pointer: string = null, previous: any = null, updated: any = null, type: 'insert'|'set'|'delete') {
+    super(pointer, previous, updated);
+    this.type = type;
+  }
 }
