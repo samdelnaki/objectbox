@@ -27,3 +27,16 @@ test('Smart array handling detects element modification.', () => {
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array2);
 });
+
+
+
+test('Smart array handling detects element insertion at end of array.', () => {
+  let array2 = [
+    'one','two','three','more'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});

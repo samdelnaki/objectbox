@@ -1,6 +1,6 @@
 import { Observable, Observer, OperatorFunction, Subject, asyncScheduler, empty } from 'rxjs';
 
-import { Change } from './change';
+import { Change, ArrayChange } from './change';
 
 /**
  * 
@@ -399,8 +399,13 @@ export class ObjectBox {
         if(path[0]==='') {
           path.shift();
         }
-        this.setAttribute(patch, path, change.previous);
-        this.setAttribute(this.target, path, change.previous);
+        if(change instanceof ArrayChange) {
+          this.setAttribute(patch, path, change.previous, change.type);
+          this.setAttribute(this.target, path, change.previous, change.type);
+        } else {
+          this.setAttribute(patch, path, change.previous);
+          this.setAttribute(this.target, path, change.previous);
+        }
       }
     }
     this.propagateChanges(changes, patch);
@@ -414,7 +419,7 @@ export class ObjectBox {
    * @param path A string array representing the route to descend through the object graph.
    * @param value The new value.
    */
-  private setAttribute(obj: any, path: string[], value: any) {
+  private setAttribute(obj: any, path: string[], value: any, operation: 'set'|'insert'|'delete'='set') {
     //TODO: Remove this line?
     path = Array.from(path);
     let attributeName = path.shift();
@@ -445,7 +450,20 @@ export class ObjectBox {
       if(!arrayIndex) {
         obj[attributeName] = value;
       } else {
-        obj[attributeName][arrayIndex] = value;
+        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+        // we need to instantiate it as an array.
+        if(!obj[attributeName] || this.isRawType(obj[attributeName]))
+          obj[attributeName]=[];
+        switch(operation) {
+          case 'set':
+            obj[attributeName][arrayIndex] = value;
+            break;
+          case 'insert':
+            obj[attributeName]
+            break;
+          case 'delete':
+            break
+        }
       }
     }
   }
@@ -492,7 +510,8 @@ export class ObjectBox {
           this.scanArrayBruteMethod(updated, original, changes, pointer, patch);
           break;
         case 'smart':
-          this.scanArraySmartMethod(updated, original, changes, pointer, patch)
+          this.scanArraySmartMethod(updated, original, changes, pointer, patch);
+          break;
         case 'integrated':
           break;
       }
@@ -542,22 +561,21 @@ export class ObjectBox {
   }
 
   private scanArrayForInserts(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
-    let nodeChanges: Change[] = [];
+    let changeDetected = false;
     let insertCount = 0;
 
-    for(let i=0;i<original.length;i++) {
-      let hasChanged = this.scanForDifferences(updated[i+insertCount], original[i], nodeChanges);
+    for(let i=0;i<updated.length;i++) {
+      let hasChanged = this.scanForDifferences(updated[i+insertCount], original[i], changes);
       if(hasChanged) {
+        changeDetected = true;
         let c: number = -1;
         let j;
         // Loop through elements to find how many were inserted.
-        for(j=i;j<updated.length;j++) {
+        for(j=i+1;j<updated.length;j++) {
           if(!this.scanForDifferences(updated[j+insertCount],original[i],[])) {
             // If we arrive here we know that elements have been inserted from 
             // i (inclusive) to j (exclusive).
             insertCount += c = j-i;
-            let change: Change = new Change(`${pointer}[${i}]`,undefined,updated.slice(i,j))
-            nodeChanges.push(change);
             break;
           }
         }
@@ -565,7 +583,12 @@ export class ObjectBox {
         // inserted up until the end of the array.
         if(c===-1) {
           insertCount += c = updated.length-i;
+          //let items = updated.slice(i,updated.length);
         }
+        // Now add a Change object.
+        let items = updated.slice(i,i+c);
+        let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,undefined,items, 'insert');
+        changes.push(arrayChange);
         // Lastly, we now want to jump over all the inserted elements, so we
         // update i to do this (we also skip updated[j], because we already
         // know, by definition, that it does not need to be analysed).
@@ -573,8 +596,7 @@ export class ObjectBox {
       }
     }
     
-    changes.concat(nodeChanges);
-    return changes.length>0;
+    return changeDetected;
   }
 
 
@@ -583,13 +605,11 @@ export class ObjectBox {
   }
 
   private scanArrayForModifications(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
-    let nodeChanges: Change[] = [];
+    let changeDetected = false;
     for(let i=0;i<original.length;i++) {
-      this.scanForDifferences(updated[i],original[i],nodeChanges,`${pointer}[${i}]`,patch);
+      changeDetected = this.scanForDifferences(updated[i],original[i],changes,`${pointer}[${i}]`,patch) || changeDetected;
     }
-    
-    changes.concat(nodeChanges);
-    return changes.length>0;
+    return changeDetected;
   }
 
 
