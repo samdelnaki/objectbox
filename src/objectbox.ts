@@ -377,8 +377,13 @@ export class ObjectBox {
         if(!this.isRawType(change.updated)) {
           change.updated = this.clone(change.updated);
         }
-        this.setAttribute(patch, path, change.updated);
-        this.setAttribute(this.target, path, change.updated);
+        if(change instanceof ArrayChange) {
+          this.setAttribute(patch, path, change.updated, change.type);
+          this.setAttribute(this.target, path, change.updated, change.type);
+        } else {
+          this.setAttribute(patch, path, change.updated);
+          this.setAttribute(this.target, path, change.updated);
+        }
       }
     }
     this.propagateChanges(changes, patch);
@@ -420,18 +425,14 @@ export class ObjectBox {
    * @param value The new value.
    */
   private setAttribute(obj: any, path: string[], value: any, operation: 'set'|'insert'|'delete'='set') {
-    //TODO: Remove this line?
     path = Array.from(path);
     let attributeName = path.shift();
 
     let arrayMatch = /(\w+)\[(\d+)\]/gi.exec(attributeName);
-    let arrayIndex;
-    if(arrayMatch!==null) {
-      attributeName = arrayMatch[1];
-      arrayIndex = arrayMatch[2];
-    }
-    if(path.length>0) {
-      if(!arrayIndex) {
+    if(arrayMatch!==null){
+      this.updateArrayElement(obj, arrayMatch, path, value, operation);
+    } else {
+      if(path.length>0) {
         // If the attribute is newly created, or was previously a raw type (string, number or boolean),
         // we need to instantiate it as an object.
         if(obj[attributeName]===undefined || this.isRawType(obj[attributeName])) {
@@ -439,31 +440,42 @@ export class ObjectBox {
         }
         this.setAttribute(obj[attributeName], path, value);
       } else {
-        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
-        // we need to instantiate it as an object.
-        if(obj[attributeName][arrayIndex]===undefined || this.isRawType(obj[attributeName][arrayIndex])) {
-          obj[attributeName][arrayIndex]={};
-        }
-        this.setAttribute(obj[attributeName][arrayIndex], path, value);
-      }
-    } else {
-      if(!arrayIndex) {
         obj[attributeName] = value;
-      } else {
-        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
-        // we need to instantiate it as an array.
-        if(!obj[attributeName] || this.isRawType(obj[attributeName]))
-          obj[attributeName]=[];
-        switch(operation) {
-          case 'set':
-            obj[attributeName][arrayIndex] = value;
-            break;
-          case 'insert':
-            obj[attributeName]
-            break;
-          case 'delete':
-            break
-        }
+      }
+    }
+  }
+
+  updateArrayElement(obj: any, arrayMatch, path: string[], value: any, operation: 'set'|'insert'|'delete'='set') {
+    let attributeName, arrayIndex;
+    if(arrayMatch!==null) {
+      attributeName = arrayMatch[1];
+      arrayIndex = Number.parseInt(arrayMatch[2]);
+    }
+    if(path.length>0) {
+      // If the element the index refers to is newly created, or was previously 
+      // a raw type (string, number or boolean), we need to instantiate it as an object.
+      if(obj[attributeName][arrayIndex]===undefined || this.isRawType(obj[attributeName][arrayIndex])) {
+        obj[attributeName][arrayIndex]={};
+      }
+      this.setAttribute(obj[attributeName][arrayIndex], path, value);
+    } else {
+      // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+      // we need to instantiate it as an array.
+      if(!obj[attributeName] || this.isRawType(obj[attributeName]))
+        obj[attributeName]=[];
+      // Then we update the element at arrayIndex, according to the update type.
+      switch(operation) {
+        case 'set':
+          obj[attributeName][arrayIndex] = value;
+          break;
+        case 'insert':
+          for(let i=0;i<value.length;i++) {
+            let z = i+arrayIndex;
+            obj[attributeName].splice(z,0,value[i]);
+          }
+          break;
+        case 'delete':
+          break
       }
     }
   }
@@ -503,7 +515,7 @@ export class ObjectBox {
         changes.push(new Change(pointer, original, updated));
       }
     }
-    // Since there is currently no capacity to handle arrays, we just log this error and continue.
+    // If it's an array, we handle it according this instance's configuration.
     else if(updated instanceof Array) {
       switch(this.arrayHandling) {
         case 'brute':
@@ -565,7 +577,7 @@ export class ObjectBox {
     let insertCount = 0;
 
     for(let i=0;i<updated.length;i++) {
-      let hasChanged = this.scanForDifferences(updated[i+insertCount], original[i], changes);
+      let hasChanged = this.scanForDifferences(updated[i], original[i-insertCount], []);
       if(hasChanged) {
         changeDetected = true;
         let c: number = -1;
@@ -583,16 +595,15 @@ export class ObjectBox {
         // inserted up until the end of the array.
         if(c===-1) {
           insertCount += c = updated.length-i;
-          //let items = updated.slice(i,updated.length);
         }
         // Now add a Change object.
         let items = updated.slice(i,i+c);
-        let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,undefined,items, 'insert');
+        let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,undefined,items,'insert');
         changes.push(arrayChange);
         // Lastly, we now want to jump over all the inserted elements, so we
         // update i to do this (we also skip updated[j], because we already
         // know, by definition, that it does not need to be analysed).
-        i=j+1;
+        i=j-1;
       }
     }
     
@@ -601,7 +612,36 @@ export class ObjectBox {
 
 
   private scanArrayForDeletions(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
-    return false;
+    let changeDetected = false;
+    let deleteCount = 0;
+
+    for(let i=0;i<updated.length;i++) {
+      let hasChanged = this.scanForDifferences(updated[i], original[i+deleteCount], []);
+      if(hasChanged) {
+        changeDetected = true;
+        let c: number = -1;
+        let j;
+        // Loop through elements to find how many were deleted.
+        for(j=i+1;j<updated.length;j++) {
+          if(!this.scanForDifferences(updated[j+deleteCount],original[i],[])) {
+            // If we arrive here we know that elements have been deleted from 
+            // i (inclusive) to j (exclusive).
+            deleteCount += c = j-i;
+            break;
+          }
+        }
+        // If deleteCount was never set, it must mean that elements were 
+        // deleted up until the end of the array.
+        if(c===-1) {
+          deleteCount += c = updated.length-i;
+        }
+        // Now add a Change object.
+        let items = original.slice(i,i+c);
+        let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,items,undefined,'delete');
+        changes.push(arrayChange);
+    }
+
+    return changeDetected;
   }
 
   private scanArrayForModifications(updated: any, original: any, changes: Change[], pointer: string = '',  patch: any = {}): boolean {
