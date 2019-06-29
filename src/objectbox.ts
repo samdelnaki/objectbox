@@ -15,7 +15,7 @@ export class ObjectBox {
   private historyQueue: Change[][] = [];
   private historyPointer: number = null;
 
-  private arrayHandling: 'smart' | 'brute' | 'integrated' = 'brute';
+  private arrayHandling: 'smart' | 'brute' = 'brute';
 
   private isArrayIndex : RegExp = new RegExp('\w+\[\d+\]').compile();
 
@@ -514,8 +514,6 @@ export class ObjectBox {
           break;
         case 'smart':
           this.scanArraySmartMethod(updated, original, changes, pointer, patch);
-          break;
-        case 'integrated':
           break;
       }
     }
