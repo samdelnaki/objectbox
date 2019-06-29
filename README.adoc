@@ -5,5 +5,3 @@ WARNING: Pre-alpha stage. This project is not fit for production use. First rele
 A utility which handles object history, to simplify undo and redo featrures etc.
 
 
-[ ] Fix bug not detecting undefined values at end of array.
-
