@@ -463,7 +463,7 @@ export class ObjectBox {
           }
           break;
         case 'delete':
-
+          obj[attributeName].splice(arrayIndex,change.previous.length);
           break
       }
     }
