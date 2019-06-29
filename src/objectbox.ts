@@ -17,8 +17,6 @@ export class ObjectBox {
 
   private arrayHandling: 'smart' | 'brute' = 'brute';
 
-  private isArrayIndex : RegExp = new RegExp('\w+\[\d+\]').compile();
-
   constructor(target: any = null, options: any = null) {
     if(target!==null) {
       this.setTarget(target);
