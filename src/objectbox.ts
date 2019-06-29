@@ -498,6 +498,12 @@ export class ObjectBox {
         changes.push(new Change(null, null, updated));
       }
     }
+    // If the updated object is 'undefined', we return a change which reflects this. This instance should only occur
+    // when scanning an array for deletions, as the object scan is generally carried out based on the updated object's
+    // value, using the original object only as a reference.
+    //else if(updated===undefined) {
+    //  changes.push(new Change(pointer, original, updated));
+    //}
     // If the object being tested is a raw type, we are able to examine it directly and add this change.
     else if(typeof updated == 'string' || typeof updated === 'number' || typeof updated === 'boolean') {
       if(updated!==original) {
@@ -571,14 +577,14 @@ export class ObjectBox {
         let j;
         // Loop through elements to find how many were inserted.
         for(j=i+1;j<updated.length;j++) {
-          if(!this.scanForDifferences(updated[j+insertCount],original[i],[])) {
+          if(!this.scanForDifferences(updated[j],original[i-insertCount],[])) {
             // If we arrive here we know that elements have been inserted from 
             // i (inclusive) to j (exclusive).
             insertCount += c = j-i;
             break;
           }
         }
-        // If insertCount was never set, it must mean that elements were 
+        // If c was never set, it must mean that elements were 
         // inserted up until the end of the array.
         if(c===-1) {
           insertCount += c = updated.length-i;
@@ -602,31 +608,39 @@ export class ObjectBox {
     let changeDetected = false;
     let deleteCount = 0;
 
-    for(let i=0;i<original.length;i++) {
+    for(let i=0;i<updated.length;i++) {
       let hasChanged = this.scanForDifferences(updated[i], original[i+deleteCount], []);
       if(hasChanged) {
         changeDetected = true;
         let c: number = -1;
         let j;
         // Loop through elements to find how many were deleted.
-        for(j=i+deleteCount+1;j<updated.length;j++) {
+        for(j=i+deleteCount+1;j<original.length;j++) {
           if(!this.scanForDifferences(updated[i],original[j],[])) {
             // If we arrive here we know that elements have been deleted from 
             // i (inclusive) to j (exclusive).
-            deleteCount += c = j-i;
+            deleteCount += c = j-i-deleteCount;
             break;
           }
         }
-        // If deleteCount was never set, it must mean that elements were 
+        // If c was never set, it must mean that elements were 
         // deleted up until the end of the array.
         if(c===-1) {
-          deleteCount += c = updated.length-i;
+          deleteCount += c = updated.length-i+1;
         }
         // Now add a Change object.
         let items = original.slice(i,i+c);
         let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,items,undefined,'delete');
         changes.push(arrayChange);
       }
+    }
+    // Lastly, we check to see if any elements were deleted from the end of the
+    // array, which won't have been detected by the loop above:
+    if(updated.length+deleteCount < original.length) {
+      changeDetected = true;
+      let items = original.slice(updated.length, original.length);
+      let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${updated.length}]`,items,undefined,'delete');
+      changes.push(arrayChange);
     }
 
     return changeDetected;

@@ -82,11 +82,78 @@ test('Smart array handling detects insertion of multiple contiguous elements.', 
 });
 test('Smart array handling detects multiple insertions of contiguous elements.', () => {
   let array2 = [
-    'one','insert-a','insert-b','two', 'insert-x', 'insert-y', 'insert-z', 'three'
+    'one','insert-a','insert-b','two', 'insert-x', 'insert-y', 'insert-z', 'three', 'mmm', 'jjj', 'fruzzle'
   ];
   obox.update({
     ar: array2
   })
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array2);
+});
+
+test('Smart array handling detects element deletion from beginning of array.', () => {
+  let array2 = [
+    'two','three'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling detects element deletion from end of array.', () => {
+  let array2 = [
+    'one','two'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling detects element deletion neither at start nor end of array.', () => {
+  let array2 = [
+    'one','three'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling detects multiple deletions.', () => {
+  let array2 = [
+    'two'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling detects deletion of multiple contiguous elements.', () => {
+  let array2 = [
+    'three'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling detects multiple deletions of contiguous elements.', () => {
+  let array2 = [
+    'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let array3 = [
+    'one','two','five','six','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array3
+  })
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array3);
 });
