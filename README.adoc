@@ -1,6 +1,9 @@
 = ObjectBox
 
-WARNING: Pre-alpha stage. This project is not fit for production use. First release anticipated in January 2019.
+WARNING: Pre-alpha stage. This project is not fit for production use. First release anticipated in January 2020.
 
 A utility which handles object history, to simplify undo and redo featrures etc.
+
+
+[ ] Fix bug not detecting undefined values at end of array.
 
