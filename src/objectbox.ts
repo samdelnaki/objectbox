@@ -390,7 +390,7 @@ export class ObjectBox {
    */
   private updateTargetReverse(changes: Change[]) {
     let patch: any  = {};
-    for(let change of changes) {
+    for(let change of changes.reverse()) {
       if(change.pointer!==null) {
         let path : string[] = change.pointer.split('.');
         // If the pointer begins with a '.', we can ignore the first part of the path.
@@ -417,7 +417,7 @@ export class ObjectBox {
     let attributeName = path.shift();
 
     if(change instanceof ArrayChange){
-      this.updateArrayElement(obj, attributeName, path, change);
+      this.updateArrayElement(obj, attributeName, path, change, undo);
     } else {
       if(path.length>0) {
         // If the attribute is newly created, or was previously a raw type (string, number or boolean),
@@ -425,46 +425,62 @@ export class ObjectBox {
         if(obj[attributeName]===undefined || this.isRawType(obj[attributeName])) {
           obj[attributeName]={};
         }
-        this.setAttribute(obj[attributeName], path, change);
+        this.setAttribute(obj[attributeName], path, change, undo);
       } else {
         obj[attributeName] = (undo) ? change.previous : change.updated;
       }
     }
   }
 
-  updateArrayElement(obj: any, attributeName: string, path: string[], change: ArrayChange) {
+  private updateArrayElement(obj: any, attributeName: string, path: string[], change: ArrayChange, undo: boolean) {
     let arrayMatch = /(\w+)\[(\d+)\]/gi.exec(attributeName);
     let arrayIndex;
-    if(arrayMatch!==null) {
+    if(arrayMatch===null) {
+      this.setAttribute(obj, path, change, undo);
+    } else {
       attributeName = arrayMatch[1];
       arrayIndex = Number.parseInt(arrayMatch[2]);
-    }
-    if(path.length>0) {
-      // If the element the index refers to is newly created, or was previously 
-      // a raw type (string, number or boolean), we need to instantiate it as an object.
-      if(obj[attributeName][arrayIndex]===undefined || this.isRawType(obj[attributeName][arrayIndex])) {
-        obj[attributeName][arrayIndex]={};
-      }
-      this.setAttribute(obj[attributeName][arrayIndex], path, change);
-    } else {
-      // If the attribute is newly created, or was previously a raw type (string, number or boolean),
-      // we need to instantiate it as an array.
-      if(!obj[attributeName] || this.isRawType(obj[attributeName]))
-        obj[attributeName]=[];
-      // Then we update the element at arrayIndex, according to the update type.
-      switch(change.type) {
-        case 'set':
-          obj[attributeName][arrayIndex] = change.updated;
-          break;
-        case 'insert':
-          for(let i=0;i<change.updated.length;i++) {
-            let z = i+arrayIndex;
-            obj[attributeName].splice(z,0,change.updated[i]);
-          }
-          break;
-        case 'delete':
-          obj[attributeName].splice(arrayIndex,change.previous.length);
-          break
+      if(path.length>0) {
+        // If the element the index refers to is newly created, or was previously 
+        // a raw type (string, number or boolean), we need to instantiate it as an object.
+        if(obj[attributeName][arrayIndex]===undefined || this.isRawType(obj[attributeName][arrayIndex])) {
+          obj[attributeName][arrayIndex]={};
+        }
+        this.setAttribute(obj[attributeName][arrayIndex], path, change);
+      } else {
+        // If the attribute is newly created, or was previously a raw type (string, number or boolean),
+        // we need to instantiate it as an array.
+        if(!obj[attributeName] || this.isRawType(obj[attributeName]))
+          obj[attributeName]=[];
+        // Then we update the element at arrayIndex, according to the update type
+        // and undo status.
+        switch(change.type) {
+          case 'set':
+            if(!undo){
+              obj[attributeName][arrayIndex] = change.updated;
+            } else {
+              obj[attributeName][arrayIndex] = change.previous;
+            }
+            break;
+          case 'insert':
+            if(!undo){
+              for(let i=0;i<change.updated.length;i++) {
+                obj[attributeName].splice(i+arrayIndex,0,change.updated[i]);
+              }
+            } else {
+              obj[attributeName].splice(arrayIndex,change.updated.length);
+            }
+            break;
+          case 'delete':
+            if(!undo){
+              obj[attributeName].splice(arrayIndex,change.previous.length);
+            } else {
+              for(let i=0;i<change.previous.length;i++) {
+                obj[attributeName].splice(i+arrayIndex,0,change.previous[i]);
+              }
+            }
+            break
+        }
       }
     }
   }
