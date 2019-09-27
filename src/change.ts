@@ -16,3 +16,9 @@ export class ArrayChange extends Change {
     this.type = type;
   }
 }
+
+export class LogicChange extends Change {
+  constructor(pointer: string = null, previous: any = null, updated: any = null) {
+    super(pointer, previous, updated);
+  }  
+}
