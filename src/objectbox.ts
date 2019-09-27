@@ -645,7 +645,7 @@ export class ObjectBox {
           deleteCount += c = updated.length-i+1;
         }
         // Now add a Change object.
-        let items = original.slice(i,i+c);
+        let items = original.slice(i+deleteCount-c,i+deleteCount);
         let arrayChange: ArrayChange = new ArrayChange(`${pointer}[${i}]`,items,undefined,'delete');
         changes.push(arrayChange);
       }

@@ -63,7 +63,7 @@ test('Smart array handling can undo element insertion neither at start nor end o
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array1);
 });
-test('Smart array can undo multiple insertions.', () => {
+test('Smart array handling can undo multiple insertions.', () => {
   let array2 = [
     'one','insert-a','two','insert-b','three'
   ];
@@ -97,48 +97,38 @@ test('Smart array handling can undo multiple insertions of contiguous elements.'
   expect(obj.ar).toEqual(array1);
 });
 
-/*
-test('Smart array handling detects element deletion from beginning of array.', () => {
+test('Smart array handling can undo deletion of single element.', () => {
   let array2 = [
-    'two','three'
+    'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
   ];
   obox.update({
     ar: array2
   })
-  let obj = obox.cloneTargetData();
-  expect(obj.ar).toEqual(array2);
-});
-test('Smart array handling detects element deletion from end of array.', () => {
-  let array2 = [
-    'one','two'
-  ];
+  let array3 = JSON.parse(JSON.stringify(array2));
+  array3.splice(4,1);
   obox.update({
-    ar: array2
-  })
-  let obj = obox.cloneTargetData();
-  expect(obj.ar).toEqual(array2);
-});
-test('Smart array handling detects element deletion neither at start nor end of array.', () => {
-  let array2 = [
-    'one','three'
-  ];
-  obox.update({
-    ar: array2
-  })
-  let obj = obox.cloneTargetData();
-  expect(obj.ar).toEqual(array2);
-});
-*/
-test('Smart array handling can undo multiple deletions.', () => {
-  let array2 = [
-    'two'
-  ];
-  obox.update({
-    ar: array2
+    ar: array3
   })
   obox.goBack();
   let obj = obox.cloneTargetData();
-  expect(obj.ar).toEqual(array1);
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling can undo multiple deletions.', () => {
+  let array2 = [
+    'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array2
+  });
+  let array3 = [
+    'one','two','four','five','seven','eight','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array3
+  });
+  obox.goBack();
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
 });
 test('Smart array handling can undo deletion of multiple contiguous elements.', () => {
   let array2 = [
@@ -151,6 +141,7 @@ test('Smart array handling can undo deletion of multiple contiguous elements.', 
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array1);
 });
+
 test('Smart array handling can undo multiple deletions of contiguous elements.', () => {
   let array2 = [
     'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
@@ -168,4 +159,37 @@ test('Smart array handling can undo multiple deletions of contiguous elements.',
   let obj = obox.cloneTargetData();
   expect(obj.ar).toEqual(array2);
 });
-/**/
+
+test('Smart array handling can undo deletion of first element in array.', () => {
+  let array2 = [
+    'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let array3 = JSON.parse(JSON.stringify(array2));
+  array3.splice(0,1);
+  obox.update({
+    ar: array3
+  })
+  obox.goBack();
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+test('Smart array handling can undo deletion of last element in array.', () => {
+  let array2 = [
+    'one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'
+  ];
+  obox.update({
+    ar: array2
+  })
+  let array3 = JSON.parse(JSON.stringify(array2));
+  array3.splice(array3.length-1,1);
+  obox.update({
+    ar: array3
+  })
+  obox.goBack();
+  let obj = obox.cloneTargetData();
+  expect(obj.ar).toEqual(array2);
+});
+
